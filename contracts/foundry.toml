@@ -1,0 +1,24 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.28"
+optimizer = true
+optimizer_runs = 200
+
+# Monad Testnet — verified against docs.monad.xyz (2026-07-14)
+eth-rpc-url = "https://testnet-rpc.monad.xyz"
+chain_id = 10143
+
+# Invariants are the slow tail of the suite (~7 min: 3200 random call sequences per
+# property, heavy struct reads each call). Unit + fuzz tests run in seconds; run the
+# full suite incl. invariants before deploy and before submission, not on every edit:
+#   forge test --no-match-contract Invariant   # fast inner loop
+#   forge test                                  # full, pre-deploy
+[profile.default.invariant]
+runs = 64
+depth = 50
+fail_on_revert = false
+
+[rpc_endpoints]
+monad_testnet = "https://testnet-rpc.monad.xyz"
