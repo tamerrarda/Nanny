@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -8,15 +8,15 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "Nanny — your AI agent needs adult supervision",
   description:
-    "Give your AI agent an allowance, not your wallet. Rules enforced on-chain.",
+    "Give your AI agent an allowance, not your wallet. A watchful vault on Monad that enforces the rules your agent can't be trusted to keep.",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>

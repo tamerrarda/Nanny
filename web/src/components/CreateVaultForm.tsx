@@ -11,17 +11,17 @@ type Props = {
 };
 
 const field =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100";
-const label = "block text-sm font-medium text-slate-700";
-const hint = "mt-1 text-xs text-slate-400";
+  "w-full rounded-xl border bg-canvas/60 px-4 py-2.5 text-ink outline-none transition focus:border-brand focus:bg-surface focus:ring-4 focus:ring-brand/10";
+const label = "block text-sm font-semibold text-ink";
+const hint = "mt-1 text-xs text-ink-soft";
 
 export function CreateVaultForm({ onCreated }: Props) {
   const { createVault, isPending, error } = useNannyWrite();
 
   const [daily, setDaily] = useState("60");
-  const [maxAccrual, setMaxAccrual] = useState("2");
-  const [perTx, setPerTx] = useState("1");
-  const [deposit, setDeposit] = useState("3");
+  const [maxAccrual, setMaxAccrual] = useState("1");
+  const [perTx, setPerTx] = useState("0.5");
+  const [deposit, setDeposit] = useState("1");
   const [chosen, setChosen] = useState<Address[]>(
     MERCHANTS.map((m) => m.address),
   );
@@ -59,7 +59,7 @@ export function CreateVaultForm({ onCreated }: Props) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
         <label className={label}>How much allowance per hour?</label>
         <div className="mt-1 flex items-center gap-2">
@@ -69,12 +69,12 @@ export function CreateVaultForm({ onCreated }: Props) {
             onChange={(e) => setDaily(e.target.value)}
             inputMode="decimal"
           />
-          <span className="text-slate-500">MON</span>
+          <span className="font-medium text-ink-soft">MON</span>
         </div>
         <p className={hint}>Trickles in second by second — not all at once.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={label}>Most it can save up</label>
           <input
@@ -107,14 +107,17 @@ export function CreateVaultForm({ onCreated }: Props) {
                 key={m.address}
                 type="button"
                 onClick={() => toggle(m.address)}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`rounded-xl border px-4 py-2.5 text-left transition ${
                   on
-                    ? "border-pink-400 bg-pink-50"
-                    : "border-slate-200 bg-white hover:border-slate-300"
+                    ? "border-brand bg-brand-tint ring-2 ring-brand/15"
+                    : "bg-canvas/50 hover:border-brand/40"
                 }`}
               >
-                <div className="font-semibold text-slate-900">{m.name}</div>
-                <div className="text-xs text-slate-500">{m.blurb}</div>
+                <div className="flex items-center gap-1.5 font-semibold text-ink">
+                  {m.name}
+                  {on && <span className="text-brand">✓</span>}
+                </div>
+                <div className="text-xs text-ink-soft">{m.blurb}</div>
               </button>
             );
           })}
@@ -133,13 +136,13 @@ export function CreateVaultForm({ onCreated }: Props) {
             onChange={(e) => setDeposit(e.target.value)}
             inputMode="decimal"
           />
-          <span className="text-slate-500">MON</span>
+          <span className="font-medium text-ink-soft">MON</span>
         </div>
         <p className={hint}>Stays in the vault. Your agent never holds it.</p>
       </div>
 
       {(formError || error) && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p className="rounded-xl bg-block-tint px-4 py-3 text-sm font-medium text-block">
           {formError ?? error?.message}
         </p>
       )}
@@ -147,7 +150,7 @@ export function CreateVaultForm({ onCreated }: Props) {
       <button
         onClick={submit}
         disabled={isPending}
-        className="w-full rounded-xl bg-pink-500 px-6 py-3.5 font-semibold text-white transition hover:bg-pink-600 disabled:opacity-50"
+        className="w-full rounded-xl bg-brand px-6 py-3.5 font-semibold text-white shadow-[0_10px_24px_-10px_rgba(101,68,220,0.9)] transition hover:bg-brand-deep disabled:opacity-50"
       >
         {isPending ? "Opening…" : "Open the vault"}
       </button>

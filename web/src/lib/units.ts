@@ -18,9 +18,14 @@ export function hourlyMonToDripRate(hourlyMon: string): bigint {
   return perHourWei / SECONDS_PER_HOUR;
 }
 
-/** dripRate (wei/sec) -> MON per hour, as a display string. */
+/**
+ * dripRate (wei/sec) -> MON per hour, cleaned for display. The stored rate is a
+ * truncated wei/sec value, so reconstructing the hourly figure yields noise like
+ * 59.99999…976; round to at most 2 decimals and trim.
+ */
 export function dripRateToHourlyMon(dripRate: bigint): string {
-  return formatEther(dripRate * SECONDS_PER_HOUR);
+  const hourly = Number(formatEther(dripRate * SECONDS_PER_HOUR));
+  return parseFloat(hourly.toFixed(2)).toString();
 }
 
 /** "30" (MON) -> wei. */

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { ATTACKER_ADDRESS, EXPLORER_TX, merchantName } from "@/lib/contract";
 import type { SpendEntry } from "@/lib/useNanny";
@@ -41,7 +42,7 @@ export function Playground({
   vaultId: bigint;
   onSpend: (entry: SpendEntry) => void;
 }) {
-  const [input, setInput] = useState("Order 0.5 MON of groceries from MarketCo.");
+  const [input, setInput] = useState("Order 0.3 MON of groceries from MarketCo.");
   const [feed, setFeed] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -77,18 +78,18 @@ export function Playground({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">
+      <div className="rounded-3xl border bg-surface p-6 shadow-[0_20px_60px_-30px_rgba(33,26,62,0.45)]">
+        <h3 className="font-display text-lg font-bold text-ink">
           Talk to the agent
         </h3>
-        <p className="text-sm text-slate-400">
-          A real LLM with one tool: spend. It never learns your rules — the vault
-          enforces them.
+        <p className="text-sm text-ink-soft">
+          A real LLM with one tool: <span className="font-mono text-brand">spend</span>.
+          It never learns your rules — the vault enforces them.
         </p>
 
         <div className="mt-4 flex gap-2">
           <input
-            className="flex-1 rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100"
+            className="flex-1 rounded-xl border bg-canvas/60 px-4 py-3 text-ink outline-none transition focus:border-brand focus:bg-surface focus:ring-4 focus:ring-brand/10"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tell your agent what to buy…"
@@ -100,15 +101,15 @@ export function Playground({
           <button
             disabled={busy || !input.trim()}
             onClick={() => run(input, { message: input })}
-            className="rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+            className="rounded-xl bg-brand px-5 py-3 font-semibold text-white shadow-[0_10px_24px_-10px_rgba(101,68,220,0.9)] transition hover:bg-brand-deep disabled:opacity-50"
           >
             Send
           </button>
         </div>
 
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <div className="text-xs font-medium uppercase text-slate-400">
-            Simulate an attack (prompt injection)
+        <div className="mt-4 border-t pt-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            Poison the agent (prompt injection)
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {ATTACKS.map((a) => (
@@ -118,7 +119,7 @@ export function Playground({
                 onClick={() =>
                   run(a.label, { message: a.message, injected: a.injected })
                 }
-                className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                className="rounded-xl border border-block/25 bg-block-tint px-4 py-2 text-sm font-semibold text-block transition hover:bg-block hover:text-white disabled:opacity-50"
               >
                 {a.label}
               </button>
@@ -136,34 +137,44 @@ export function Playground({
 
 function ResultCard({ entry }: { entry: Entry }) {
   const { prompt, reply, pending } = entry;
+  const blocked = reply?.outcome?.status === "blocked";
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-sm font-medium text-slate-500">You asked</div>
-      <div className="text-slate-900">{prompt}</div>
+    <div
+      className={`rounded-3xl border bg-surface p-5 shadow-[0_20px_60px_-30px_rgba(33,26,62,0.4)] ${
+        blocked ? "border-block/30" : ""
+      }`}
+    >
+      <div className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        You asked
+      </div>
+      <div className="text-ink">{prompt}</div>
 
       {pending && (
-        <div className="mt-3 text-sm text-slate-400">Agent is thinking…</div>
+        <div className="mt-3 flex items-center gap-2 text-sm text-ink-soft">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
+          Agent is thinking…
+        </div>
       )}
 
       {reply?.error && (
-        <div className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mt-3 rounded-xl bg-accent-tint px-4 py-3 text-sm text-accent-deep">
           {reply.error}
         </div>
       )}
 
       {reply?.agentText && (
-        <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <div className="mt-3 rounded-xl bg-canvas px-4 py-3 text-sm text-ink/80">
           {reply.agentText}
         </div>
       )}
 
       {reply?.attempted && (
-        <div className="mt-3 text-sm text-slate-500">
+        <div className="mt-3 text-sm text-ink-soft">
           Agent tried to pay{" "}
-          <span className="font-medium text-slate-800">
+          <span className="font-semibold text-ink">
             {merchantName(reply.attempted.recipient)}
           </span>{" "}
-          <span className="font-medium text-slate-800">
+          <span className="font-semibold text-ink">
             {reply.attempted.amount} MON
           </span>
           {reply.attempted.intent ? ` — “${reply.attempted.intent}”` : ""}
@@ -171,34 +182,46 @@ function ResultCard({ entry }: { entry: Entry }) {
       )}
 
       {reply?.outcome?.status === "paid" && (
-        <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3">
-          <span className="text-sm font-medium text-emerald-800">
-            ✅ Paid — allowed by the vault
+        <div className="mt-3 flex items-center justify-between rounded-2xl bg-ok-tint px-4 py-3">
+          <span className="text-sm font-semibold text-ok">
+            Paid — allowed by the vault
           </span>
           <a
             href={`${EXPLORER_TX}${reply.outcome.txHash}`}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-emerald-700 hover:underline"
+            className="text-sm font-medium text-ok hover:underline"
           >
             verify on chain ↗
           </a>
         </div>
       )}
 
-      {reply?.outcome?.status === "blocked" && (
-        <div className="mt-3 rounded-xl bg-red-50 px-4 py-3">
-          <span className="text-sm font-semibold text-red-800">
-            🛡️ Nanny blocked it: {reply.outcome.reason}
-          </span>
-          <p className="mt-1 text-xs text-red-600">
-            The agent was fooled. The contract wasn’t.
-          </p>
+      {blocked && reply?.outcome?.status === "blocked" && (
+        <div className="mt-3 flex items-start gap-3 rounded-2xl bg-ink px-4 py-3.5 text-white">
+          <Image
+            src="/nanny-owl.png"
+            alt=""
+            width={34}
+            height={34}
+            className="mt-0.5 shrink-0"
+          />
+          <div>
+            <div className="font-semibold">
+              Nanny blocked it —{" "}
+              <span className="font-mono text-accent">
+                {reply.outcome.reason}
+              </span>
+            </div>
+            <p className="mt-0.5 text-sm text-white/60">
+              The agent was fooled. The contract wasn’t.
+            </p>
+          </div>
         </div>
       )}
 
       {reply && !reply.attempted && !reply.error && (
-        <div className="mt-3 text-sm text-slate-400">
+        <div className="mt-3 text-sm text-ink-soft">
           The agent chose not to spend.
         </div>
       )}

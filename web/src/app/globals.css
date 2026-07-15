@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ─── Nanny design tokens — the watchful owl ─────────────────────────────
+   Purple (Monad-aligned) guardian, amber allowance, lavender canvas.       */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-canvas: #f4f1fb;
+  --color-canvas-2: #ebe6f9;
+  --color-surface: #ffffff;
+  --color-border: #e6def6;
+
+  --color-ink: #211a3e;
+  --color-ink-soft: #6d6690;
+
+  --color-brand: #6544dc;
+  --color-brand-deep: #4c2fbd;
+  --color-brand-tint: #ede9fc;
+
+  --color-accent: #feaf30;
+  --color-accent-deep: #e2951a;
+  --color-accent-tint: #fdf1da;
+
+  --color-ok: #17a074;
+  --color-ok-tint: #e0f5ec;
+  --color-block: #e0483d;
+  --color-block-tint: #fce8e6;
+
+  --font-display: var(--font-fraunces);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--color-border);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(120% 120% at 85% -10%, #efe9fd 0%, transparent 45%),
+    radial-gradient(90% 90% at 5% 110%, #f6eef7 0%, transparent 40%),
+    var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The allowance drip: a slow amber shimmer on the meter fill. */
+@keyframes drip-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.drip-fill {
+  animation: drip-pulse 2.4s ease-in-out infinite;
 }

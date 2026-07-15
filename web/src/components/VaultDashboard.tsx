@@ -56,109 +56,132 @@ export function VaultDashboard({
     }
   }
 
+  const fillPct =
+    vault.accrualCap > 0n
+      ? Number((allowance * 1000n) / vault.accrualCap) / 10
+      : 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Status card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border bg-surface p-6 shadow-[0_20px_60px_-30px_rgba(33,26,62,0.45)]">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-sm text-slate-500">In the vault</div>
-            <div className="text-3xl font-bold text-slate-900">
-              {weiToMon(vault.balance)} <span className="text-lg">MON</span>
+            <div className="text-xs font-medium uppercase tracking-wide text-ink-soft">
+              In the vault
+            </div>
+            <div className="font-display text-4xl font-black text-ink">
+              {weiToMon(vault.balance)}{" "}
+              <span className="text-xl font-bold text-ink-soft">MON</span>
             </div>
           </div>
           <span
-            className={`rounded-full px-3 py-1 text-sm font-medium ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
               vault.frozen
-                ? "bg-slate-200 text-slate-600"
-                : "bg-emerald-100 text-emerald-800"
+                ? "bg-canvas-2 text-ink-soft"
+                : "bg-ok-tint text-ok"
             }`}
           >
-            {vault.frozen ? "Frozen" : "Active"}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                vault.frozen ? "bg-ink-soft" : "bg-ok"
+              }`}
+            />
+            {vault.frozen ? "Frozen" : "Watching"}
           </span>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4">
-          <div className="rounded-xl bg-pink-50 p-4">
-            <div className="text-xs text-pink-700">Available to spend now</div>
-            <div className="font-mono text-2xl font-semibold text-pink-900 tabular-nums">
-              {weiToMon(allowance, 6)}
-            </div>
-            <div className="mt-1 text-xs text-pink-600">
-              {dripRateToHourlyMon(vault.dripRate)} MON/hour, trickling in
-            </div>
+        {/* Signature: the allowance drip meter */}
+        <div className="mt-5 rounded-2xl bg-accent-tint p-4">
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-accent-deep">
+              Available to spend now
+            </span>
+            <span className="text-xs text-ink-soft">
+              {dripRateToHourlyMon(vault.dripRate)} MON/hr
+            </span>
           </div>
-          <div className="rounded-xl bg-slate-50 p-4">
-            <div className="text-xs text-slate-500">Most it can save up</div>
-            <div className="text-2xl font-semibold text-slate-800">
-              {weiToMon(vault.accrualCap)}
-            </div>
-            <div className="mt-1 text-xs text-slate-400">
-              Max {weiToMon(vault.perTxCap)} per spend
-            </div>
+          <div className="mt-1 font-display text-3xl font-black tabular-nums text-ink">
+            {weiToMon(allowance, 6)}{" "}
+            <span className="text-base font-bold text-ink-soft">MON</span>
+          </div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/70">
+            <div
+              className="drip-fill h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.min(100, Math.max(2, fillPct))}%` }}
+            />
+          </div>
+          <div className="mt-1.5 text-xs text-accent-deep">
+            trickling toward a cap of {weiToMon(vault.accrualCap)} MON · max{" "}
+            {weiToMon(vault.perTxCap)} per spend
           </div>
         </div>
 
-        {!vault.frozen && (
+        {!vault.frozen ? (
           <button
             onClick={onFreeze}
             disabled={isPending}
-            className="mt-6 w-full rounded-xl bg-red-500 px-6 py-3.5 text-lg font-bold text-white transition hover:bg-red-600 disabled:opacity-50"
+            className="mt-5 w-full rounded-2xl border-2 border-block/20 bg-block-tint px-6 py-3 text-base font-bold text-block transition hover:bg-block hover:text-white disabled:opacity-50"
           >
-            {isPending ? "Freezing…" : "🛑 Freeze the vault"}
+            {isPending ? "Freezing…" : "Freeze the vault & return everything"}
           </button>
-        )}
-        {refund && (
-          <p className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Frozen. {refund} MON returned to you.
-          </p>
+        ) : (
+          refund && (
+            <p className="mt-5 rounded-2xl bg-ok-tint px-4 py-3 text-sm font-medium text-ok">
+              Frozen. {refund} MON returned to you — instantly.
+            </p>
+          )
         )}
       </div>
 
-      {/* Spend log */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">Spending log</h3>
-        <p className="text-sm text-slate-400">
-          Every payment, with the reason your agent gave — like a bank statement.
-        </p>
+      {/* Spend log — deliberately a serious, dark "bank statement" panel */}
+      <div className="overflow-hidden rounded-3xl bg-ink text-white shadow-[0_20px_60px_-30px_rgba(33,26,62,0.6)]">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div>
+            <h3 className="font-display text-lg font-bold">Spending log</h3>
+            <p className="text-xs text-white/50">
+              Every payment, with the reason your agent gave.
+            </p>
+          </div>
+          <span className="rounded-full bg-white/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white/60">
+            intent receipts
+          </span>
+        </div>
         {spends.length === 0 ? (
-          <div className="mt-4 rounded-xl bg-slate-50 py-10 text-center text-sm text-slate-400">
-            No spending yet.
+          <div className="mx-6 mb-6 rounded-2xl border border-white/10 py-8 text-center text-sm text-white/40">
+            No spending yet. Head to the playground.
           </div>
         ) : (
-          <table className="mt-4 w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase text-slate-400">
-                <th className="pb-2">To</th>
-                <th className="pb-2">Amount</th>
-                <th className="pb-2">Reason</th>
-                <th className="pb-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {spends.map((r) => (
-                <tr key={r.txHash} className="border-t border-slate-100">
-                  <td className="py-2 font-medium text-slate-800">
-                    {merchantName(r.recipient)}
-                  </td>
-                  <td className="py-2 tabular-nums text-slate-800">
-                    {r.amountMon} MON
-                  </td>
-                  <td className="py-2 text-slate-600">{r.intent}</td>
-                  <td className="py-2 text-right">
-                    <a
-                      href={`${EXPLORER_TX}${r.txHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-pink-600 hover:underline"
-                    >
-                      verify ↗
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="px-2 pb-2">
+            {spends.map((r) => (
+              <div
+                key={r.txHash}
+                className="flex items-center gap-3 rounded-2xl px-4 py-3 transition hover:bg-white/5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">
+                      {merchantName(r.recipient)}
+                    </span>
+                    <span className="tabular-nums text-accent">
+                      {r.amountMon} MON
+                    </span>
+                  </div>
+                  <div className="truncate text-sm text-white/55">
+                    “{r.intent}”
+                  </div>
+                </div>
+                <a
+                  href={`${EXPLORER_TX}${r.txHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/80 transition hover:bg-white/20"
+                >
+                  verify ↗
+                </a>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
