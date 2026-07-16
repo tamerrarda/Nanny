@@ -11,6 +11,11 @@ export const NANNY_VAULT_ADDRESS = getAddress(
 /** Block explorer link prefix for a transaction hash — the "verify on chain" link. */
 export const EXPLORER_TX = "https://testnet.monadscan.com/tx/";
 
+/** Block explorer link prefix for an address — used to open the vault contract. */
+export const EXPLORER_ADDRESS = "https://testnet.monadscan.com/address/";
+
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 10143);
+
 /**
  * The demo merchant directory. These are the vendors a user can allowlist when
  * opening a vault. In the real world these would be a merchant's payout address;
@@ -19,23 +24,31 @@ export const EXPLORER_TX = "https://testnet.monadscan.com/tx/";
  * The Attacker address is NOT a real merchant — it is the destination the
  * injected prompt tries to send money to, so the contract can reject it live.
  */
-export type Merchant = { name: string; address: Address; blurb: string };
+export type Merchant = {
+  name: string;
+  address: Address;
+  blurb: string;
+  icon: "cart" | "book" | "code";
+};
 
 export const MERCHANTS: Merchant[] = [
   {
     name: "MarketCo",
     address: getAddress("0x40D5560C7a6E38Fcd4dA66b824C5a68f9aA6D8B6"),
     blurb: "Groceries & household",
+    icon: "cart",
   },
   {
     name: "KitapCo",
     address: getAddress("0x47308189630dff3e2beBd5D4C8B87c23a97f1098"),
     blurb: "Books & media",
+    icon: "book",
   },
   {
     name: "APIco",
     address: getAddress("0x6E8D06185528A5115070ad3e25Ed18a13458fF80"),
     blurb: "API credits & SaaS",
+    icon: "code",
   },
 ];
 

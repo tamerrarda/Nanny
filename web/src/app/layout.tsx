@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Fraunces } from "next/font/google";
+import { Geist, Chakra_Petch, Exo_2 } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -8,8 +8,17 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const chakra = Chakra_Petch({
+  variable: "--font-chakra",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
+
+// Carries the hero subtitle only. Exo 2 shares Chakra Petch's technical voice
+// but is drawn for reading, so it can hold a full sentence the display face
+// would fight. Variable font — the weight range costs one file.
+const exo2 = Exo_2({
+  variable: "--font-exo",
   subsets: ["latin"],
 });
 
@@ -27,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${chakra.variable} ${exo2.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>

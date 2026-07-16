@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { EXPLORER_TX, merchantName } from "@/lib/contract";
 import { dripRateToHourlyMon, projectedAllowance, weiToMon } from "@/lib/units";
@@ -15,10 +16,12 @@ export function VaultDashboard({
   vaultId,
   spends,
   onFrozen,
+  onNewVault,
 }: {
   vaultId: bigint;
   spends: SpendEntry[];
   onFrozen: () => void;
+  onNewVault: () => void;
 }) {
   const { data, isLoading } = useVault(vaultId);
   const now = useNowSeconds();
@@ -41,7 +44,14 @@ export function VaultDashboard({
   }, [vault, now]);
 
   if (isLoading || !vault) {
-    return <div className="text-slate-400">Loading your vault…</div>;
+    return (
+      <div className="hud hud-frame">
+        <div className="hud hud-body flex items-center gap-3 p-6 text-sm text-ink-soft">
+          <span className="beacon h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+          Reading your vault from the chain…
+        </div>
+      </div>
+    );
   }
 
   async function onFreeze() {
@@ -63,127 +73,165 @@ export function VaultDashboard({
 
   return (
     <div className="space-y-5">
-      {/* Status card */}
-      <div className="rounded-3xl border bg-surface p-6 shadow-[0_20px_60px_-30px_rgba(33,26,62,0.45)]">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-ink-soft">
-              In the vault
-            </div>
-            <div className="font-display text-4xl font-black text-ink">
-              {weiToMon(vault.balance)}{" "}
-              <span className="text-xl font-bold text-ink-soft">MON</span>
-            </div>
-          </div>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-              vault.frozen
-                ? "bg-canvas-2 text-ink-soft"
-                : "bg-ok-tint text-ok"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                vault.frozen ? "bg-ink-soft" : "bg-ok"
-              }`}
-            />
-            {vault.frozen ? "Frozen" : "Watching"}
-          </span>
-        </div>
-
-        {/* Signature: the allowance drip meter */}
-        <div className="mt-5 rounded-2xl bg-accent-tint p-4">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wide text-accent-deep">
-              Available to spend now
-            </span>
-            <span className="text-xs text-ink-soft">
-              {dripRateToHourlyMon(vault.dripRate)} MON/hr
-            </span>
-          </div>
-          <div className="mt-1 font-display text-3xl font-black tabular-nums text-ink">
-            {weiToMon(allowance, 6)}{" "}
-            <span className="text-base font-bold text-ink-soft">MON</span>
-          </div>
-          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/70">
-            <div
-              className="drip-fill h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
-              style={{ width: `${Math.min(100, Math.max(2, fillPct))}%` }}
-            />
-          </div>
-          <div className="mt-1.5 text-xs text-accent-deep">
-            trickling toward a cap of {weiToMon(vault.accrualCap)} MON · max{" "}
-            {weiToMon(vault.perTxCap)} per spend
-          </div>
-        </div>
-
-        {!vault.frozen ? (
-          <button
-            onClick={onFreeze}
-            disabled={isPending}
-            className="mt-5 w-full rounded-2xl border-2 border-block/20 bg-block-tint px-6 py-3 text-base font-bold text-block transition hover:bg-block hover:text-white disabled:opacity-50"
-          >
-            {isPending ? "Freezing…" : "Freeze the vault & return everything"}
-          </button>
-        ) : (
-          refund && (
-            <p className="mt-5 rounded-2xl bg-ok-tint px-4 py-3 text-sm font-medium text-ok">
-              Frozen. {refund} MON returned to you — instantly.
-            </p>
-          )
-        )}
-      </div>
-
-      {/* Spend log — deliberately a serious, dark "bank statement" panel */}
-      <div className="overflow-hidden rounded-3xl bg-ink text-white shadow-[0_20px_60px_-30px_rgba(33,26,62,0.6)]">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div>
-            <h3 className="font-display text-lg font-bold">Spending log</h3>
-            <p className="text-xs text-white/50">
-              Every payment, with the reason your agent gave.
-            </p>
-          </div>
-          <span className="rounded-full bg-white/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white/60">
-            intent receipts
-          </span>
-        </div>
-        {spends.length === 0 ? (
-          <div className="mx-6 mb-6 rounded-2xl border border-white/10 py-8 text-center text-sm text-white/40">
-            No spending yet. Head to the playground.
-          </div>
-        ) : (
-          <div className="px-2 pb-2">
-            {spends.map((r) => (
-              <div
-                key={r.txHash}
-                className="flex items-center gap-3 rounded-2xl px-4 py-3 transition hover:bg-white/5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
-                      {merchantName(r.recipient)}
-                    </span>
-                    <span className="tabular-nums text-accent">
-                      {r.amountMon} MON
-                    </span>
-                  </div>
-                  <div className="truncate text-sm text-white/55">
-                    “{r.intent}”
-                  </div>
-                </div>
-                <a
-                  href={`${EXPLORER_TX}${r.txHash}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/80 transition hover:bg-white/20"
-                >
-                  verify ↗
-                </a>
+      {/* Status */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="hud hud-frame"
+      >
+        <div className="hud hud-body p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
+                In the vault
               </div>
-            ))}
+              <div className="mt-1 font-display text-5xl font-bold tabular-nums text-ink drop-shadow-[0_0_22px_rgba(168,85,247,0.4)]">
+                {weiToMon(vault.balance)}{" "}
+                <span className="text-2xl font-bold text-ink-soft">MON</span>
+              </div>
+              <div className="mt-1.5 text-xs text-ink-dim">
+                Vault #{vaultId.toString()}
+              </div>
+            </div>
+            <span
+              className={`hud hud-sm inline-flex items-center gap-2 px-3.5 py-2 ${
+                vault.frozen ? "bg-white/5" : "bg-ok-tint"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  vault.frozen ? "bg-ink-dim" : "beacon bg-ok"
+                }`}
+              />
+              <span
+                className={`font-display text-[11px] font-bold uppercase tracking-widest ${
+                  vault.frozen ? "text-ink-dim" : "text-ok"
+                }`}
+              >
+                {vault.frozen ? "Frozen" : "Watching"}
+              </span>
+            </span>
           </div>
-        )}
+
+          {/* Signature: the allowance drip meter */}
+          <div className="hud hud-sm mt-5 bg-accent-tint/70 p-4 ring-1 ring-inset ring-accent/25">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
+                Available to spend now
+              </span>
+              <span className="font-mono text-[11px] text-accent-deep/80">
+                {dripRateToHourlyMon(vault.dripRate)} MON/hr
+              </span>
+            </div>
+            <div className="mt-1 font-display text-4xl font-bold tabular-nums text-accent-deep drop-shadow-[0_0_18px_rgba(254,175,48,0.45)]">
+              {weiToMon(allowance, 6)}{" "}
+              <span className="text-lg text-accent/70">MON</span>
+            </div>
+            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-black/40">
+              <div
+                className="drip-fill h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
+                style={{ width: `${Math.min(100, Math.max(2, fillPct))}%` }}
+              />
+            </div>
+            <div className="mt-2 text-[11px] text-accent-deep/70">
+              trickling toward a cap of {weiToMon(vault.accrualCap)} MON · max{" "}
+              {weiToMon(vault.perTxCap)} per spend
+            </div>
+          </div>
+
+          {!vault.frozen ? (
+            <motion.button
+              onClick={onFreeze}
+              disabled={isPending}
+              whileTap={isPending ? undefined : { scale: 0.985 }}
+              transition={{ duration: 0.15 }}
+              className="hud hud-sm mt-5 w-full cursor-pointer bg-block/15 px-6 py-3.5 font-display text-sm font-bold uppercase tracking-[0.14em] text-block ring-1 ring-inset ring-block/40 transition-colors duration-200 hover:bg-block hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPending ? "Freezing…" : "Freeze the vault & return everything"}
+            </motion.button>
+          ) : (
+            refund && (
+              <motion.p
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="hud hud-sm mt-5 bg-ok-tint px-4 py-3 text-sm font-medium text-ok ring-1 ring-inset ring-ok/30"
+              >
+                Frozen. {refund} MON returned to you — instantly.
+              </motion.p>
+            )
+          )}
+        </div>
+      </motion.div>
+
+      {/* Spend log — the receipts */}
+      <div className="hud hud-frame">
+        <div className="hud hud-body">
+          <div className="flex items-center justify-between gap-3 px-6 py-4">
+            <div>
+              <h3 className="font-display text-base font-bold uppercase tracking-wide text-ink">
+                Spending log
+              </h3>
+              <p className="mt-0.5 text-xs text-ink-dim">
+                Every payment, with the reason your agent gave.
+              </p>
+            </div>
+            <span className="hud hud-sm bg-brand/15 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-brand-text">
+              intent receipts
+            </span>
+          </div>
+          {spends.length === 0 ? (
+            <div className="hud hud-sm mx-6 mb-6 bg-black/20 py-8 text-center text-sm text-ink-dim">
+              No spending yet. Head to the agent.
+            </div>
+          ) : (
+            <div className="px-3 pb-3">
+              <AnimatePresence initial={false}>
+                {spends.map((r) => (
+                  <motion.div
+                    key={r.txHash}
+                    layout
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    className="hud hud-sm flex items-center gap-3 px-3 py-3 transition-colors duration-200 hover:bg-white/5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+                          {merchantName(r.recipient)}
+                        </span>
+                        <span className="font-display font-bold tabular-nums text-accent">
+                          {r.amountMon} MON
+                        </span>
+                      </div>
+                      <div className="truncate text-sm text-ink-soft">
+                        “{r.intent}”
+                      </div>
+                    </div>
+                    <a
+                      href={`${EXPLORER_TX}${r.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hud hud-sm shrink-0 bg-white/5 px-2.5 py-1.5 text-xs text-ink-soft transition-colors duration-200 hover:bg-brand/25 hover:text-brand-text"
+                    >
+                      verify ↗
+                    </a>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       </div>
+
+      <button
+        onClick={onNewVault}
+        className="cursor-pointer font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-dim transition-colors duration-200 hover:text-brand-text"
+      >
+        + Open another vault
+      </button>
     </div>
   );
 }
