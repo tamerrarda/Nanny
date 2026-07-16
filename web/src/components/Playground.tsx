@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useState } from "react";
 import { ATTACKER_ADDRESS, EXPLORER_TX, merchantName } from "@/lib/contract";
+import { useAgentAuth } from "@/lib/useAgentAuth";
 import type { SpendEntry } from "@/lib/useNanny";
 
 type Outcome =
@@ -61,15 +62,19 @@ export function Playground({
   const [input, setInput] = useState("Order 0.3 MON of groceries from MarketCo.");
   const [feed, setFeed] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
+  const authorize = useAgentAuth();
 
   async function run(prompt: string, payload: Record<string, unknown>) {
     setBusy(true);
     setFeed((f) => [{ prompt, pending: true }, ...f]);
     try {
+      // Prompts the wallet the first time only; the signature is reused for the
+      // rest of the vault's session.
+      const auth = await authorize(vaultId);
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vaultId: vaultId.toString(), ...payload }),
+        body: JSON.stringify({ vaultId: vaultId.toString(), auth, ...payload }),
       });
       const reply: AgentReply = await res.json();
       setFeed((f) => [{ prompt, reply }, ...f.slice(1)]);
@@ -82,7 +87,15 @@ export function Playground({
           txHash: reply.outcome.txHash,
         });
       }
-    } catch {
+    } catch (e) {
+      // Not always the network: rejecting the signature prompt lands here too,
+      // and "Network error" would send you looking in the wrong place.
+      const error =
+        e instanceof Error && /reject|denied/i.test(e.message)
+          ? "You declined the signature, so the agent has no authorization."
+          : e instanceof Error
+            ? e.message
+            : "Network error";
       setFeed((f) => [
         {
           prompt,
@@ -91,7 +104,7 @@ export function Playground({
             attempted: null,
             outcome: null,
             model: null,
-            error: "Network error",
+            error,
           },
         },
         ...f.slice(1),

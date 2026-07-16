@@ -13,6 +13,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 import { nannyVaultAbi } from "@/lib/contract";
+import { parseAuthMessage } from "@/lib/agentAuth";
 
 export const runtime = "nodejs";
 
@@ -81,6 +82,72 @@ export async function POST(req: Request) {
     chain: monadTestnet,
     transport: http(RPC_URL),
   });
+
+  /**
+   * The agent wallet is shared, and the contract only asks `msg.sender ==
+   * v.agent` — which holds for every vault this app creates. So the chain will
+   * happily let this endpoint spend from ANY vault; it is this check, not the
+   * contract, that decides whose instruction the agent is willing to take.
+   * Vault ids are sequential and public, so without it the whole thing is open.
+   */
+  const authFailure = await (async (): Promise<string | null> => {
+    const auth = body.auth;
+    if (!auth?.message || !auth?.signature || !auth?.address) {
+      return "Missing authorization. Sign the agent authorization with the vault owner's wallet.";
+    }
+
+    const parsed = parseAuthMessage(String(auth.message));
+    if (!parsed) return "Malformed authorization message.";
+
+    // Every field below is read from the SIGNED text, never from the request
+    // body — otherwise a caller could sign for their own vault and then swap
+    // the id, and the signature would still verify.
+    if (parsed.vaultId !== vaultId.toString()) {
+      return "Authorization is for a different vault.";
+    }
+    if (parsed.chainId !== monadTestnet.id) {
+      return "Authorization is for a different chain.";
+    }
+    const now = Date.now();
+    if (now > parsed.expiresAt) return "Authorization expired. Sign again.";
+    // Small tolerance for a client clock running ahead of the server's.
+    if (parsed.issuedAt > now + 120_000) {
+      return "Authorization is not valid yet.";
+    }
+
+    let signer: Address;
+    try {
+      signer = getAddress(parsed.owner);
+    } catch {
+      return "Malformed owner address in authorization.";
+    }
+
+    // verifyMessage (not recoverAddress) so smart-contract wallets validating
+    // via ERC-1271 work too, not only EOAs.
+    const validSig = await publicClient.verifyMessage({
+      address: signer,
+      message: String(auth.message),
+      signature: auth.signature as `0x${string}`,
+    });
+    if (!validSig) return "Invalid signature.";
+
+    // The signature proves who signed; the chain decides whether they own it.
+    const vault = (await publicClient.readContract({
+      address: VAULT,
+      abi: nannyVaultAbi,
+      functionName: "getVault",
+      args: [vaultId],
+    })) as { owner: Address };
+
+    if (vault.owner.toLowerCase() !== signer.toLowerCase()) {
+      return "Signer does not own this vault.";
+    }
+    return null;
+  })();
+
+  if (authFailure) {
+    return Response.json({ error: authFailure }, { status: 401 });
+  }
 
   /**
    * The one real code path a spend takes, whether the LLM asked for it or the
