@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Address } from "viem";
-import { useReadContract } from "wagmi";
+import { decodeEventLog, type Address, type Hash } from "viem";
+import {
+  useAccount,
+  useConfig,
+  useReadContract,
+  useSwitchChain,
+  useWriteContract,
+} from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { monadTestnet } from "wagmi/chains";
 import { NANNY_VAULT_ADDRESS, nannyVaultAbi } from "./contract";
 
 export type Vault = {
@@ -37,45 +45,80 @@ export function useNextVaultId() {
   return useReadContract({ ...base, functionName: "nextVaultId" });
 }
 
-async function ownerAction(payload: Record<string, unknown>) {
-  const res = await fetch("/api/owner", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error ?? "Action failed");
-  return data;
+/** Reads the new vault's id straight out of the receipt.
+ *
+ *  The old server path derived it as `nextVaultId - 1` after the write. That was
+ *  only ever safe because one key made every vault: with real wallets, two people
+ *  opening a vault in the same block would both read the same counter and one
+ *  would be handed the other's vault. The VaultCreated log is the tx's own
+ *  result, so it cannot be raced.
+ */
+function vaultIdFromReceipt(logs: readonly { data: Hash; topics: string[] }[]) {
+  for (const log of logs) {
+    try {
+      const parsed = decodeEventLog({
+        abi: nannyVaultAbi,
+        data: log.data,
+        topics: log.topics as [signature: Hash, ...args: Hash[]],
+      });
+      if (parsed.eventName === "VaultCreated") {
+        return (parsed.args as unknown as { vaultId: bigint }).vaultId;
+      }
+    } catch {
+      // Not one of ours — the receipt can carry logs from other contracts.
+    }
+  }
+  throw new Error("Vault was created but its id was not in the receipt.");
 }
 
 /**
- * Owner write actions, dispatched through the server-side demo owner wallet
- * (POST /api/owner). bigints are sent as strings since JSON can't carry them.
- * Returns a small pending/error state the forms share.
+ * Owner write actions, signed by the connected wallet. Same surface the forms
+ * already used when this went through the server, so callers only had to learn
+ * about `isConnected`.
  */
 export function useNannyWrite() {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const { writeContractAsync } = useWriteContract();
+  const { isConnected, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const config = useConfig();
 
-  function wrap<T>(fn: () => Promise<T>) {
-    return async () => {
-      setIsPending(true);
-      setError(null);
-      try {
-        return await fn();
-      } catch (e) {
-        const err = e instanceof Error ? e : new Error("Action failed");
-        setError(err);
-        throw err;
-      } finally {
-        setIsPending(false);
+  async function run<T>(fn: () => Promise<T>): Promise<T> {
+    setIsPending(true);
+    setError(null);
+    try {
+      if (!isConnected) throw new Error("Connect a wallet first.");
+      // A wallet parked on another network would otherwise send the tx there,
+      // where this contract does not exist.
+      if (chainId !== monadTestnet.id) {
+        await switchChainAsync({ chainId: monadTestnet.id });
       }
-    };
+      return await fn();
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error("Action failed");
+      setError(err);
+      throw err;
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function send(functionName: string, args: readonly unknown[], value?: bigint) {
+    const hash = await writeContractAsync({
+      ...base,
+      functionName,
+      args,
+      value,
+      chainId: monadTestnet.id,
+    });
+    return waitForTransactionReceipt(config, { hash });
   }
 
   return {
     isPending,
     error,
+    isConnected,
     createVault: (args: {
       agent: Address;
       dripRate: bigint;
@@ -84,29 +127,35 @@ export function useNannyWrite() {
       recipients: Address[];
       deposit: bigint;
     }) =>
-      wrap(() =>
-        ownerAction({
-          action: "create",
-          agent: args.agent,
-          dripRate: args.dripRate.toString(),
-          accrualCap: args.accrualCap.toString(),
-          perTxCap: args.perTxCap.toString(),
-          recipients: args.recipients,
-          deposit: args.deposit.toString(),
-        }),
-      )(),
+      run(async () => {
+        const receipt = await send(
+          "createVault",
+          [
+            args.agent,
+            args.dripRate,
+            args.accrualCap,
+            args.perTxCap,
+            args.recipients,
+          ],
+          args.deposit,
+        );
+        return {
+          txHash: receipt.transactionHash,
+          vaultId: vaultIdFromReceipt(
+            receipt.logs as unknown as { data: Hash; topics: string[] }[],
+          ).toString(),
+        };
+      }),
     deposit: (vaultId: bigint, amount: bigint) =>
-      wrap(() =>
-        ownerAction({
-          action: "deposit",
-          vaultId: vaultId.toString(),
-          amount: amount.toString(),
-        }),
-      )(),
+      run(async () => {
+        const receipt = await send("deposit", [vaultId], amount);
+        return { txHash: receipt.transactionHash };
+      }),
     freeze: (vaultId: bigint) =>
-      wrap(() =>
-        ownerAction({ action: "freeze", vaultId: vaultId.toString() }),
-      )(),
+      run(async () => {
+        const receipt = await send("freeze", [vaultId]);
+        return { txHash: receipt.transactionHash };
+      }),
   };
 }
 

@@ -148,7 +148,9 @@ export function VaultDashboard({
               transition={{ duration: 0.15 }}
               className="hud hud-sm mt-5 w-full cursor-pointer bg-block/15 px-6 py-3.5 font-display text-sm font-bold uppercase tracking-[0.14em] text-block ring-1 ring-inset ring-block/40 transition-colors duration-200 hover:bg-block hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending ? "Freezing…" : "Freeze the vault & return everything"}
+              {isPending
+                ? "Confirm in your wallet…"
+                : "Freeze the vault & return everything"}
             </motion.button>
           ) : (
             refund && (

@@ -4,11 +4,8 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState } from "react";
-import {
-  EXPLORER_ADDRESS,
-  NANNY_VAULT_ADDRESS,
-  OWNER_ADDRESS,
-} from "@/lib/contract";
+import { EXPLORER_ADDRESS, NANNY_VAULT_ADDRESS } from "@/lib/contract";
+import { ConnectWallet } from "@/components/ConnectWallet";
 import { CreateVaultForm } from "@/components/CreateVaultForm";
 import { Playground } from "@/components/Playground";
 import { Sidebar, type Tab } from "@/components/Sidebar";
@@ -214,12 +211,7 @@ function AppBar() {
           </span>
         </a>
 
-        <div className="hud hud-sm flex items-center gap-2 bg-white/[0.04] px-3.5 py-2 ring-1 ring-inset ring-white/10">
-          <span className="beacon h-1.5 w-1.5 rounded-full bg-ok" />
-          <span className="text-xs text-ink-soft">
-            demo · {OWNER_ADDRESS.slice(0, 6)}…{OWNER_ADDRESS.slice(-4)}
-          </span>
-        </div>
+        <ConnectWallet />
       </div>
     </header>
   );

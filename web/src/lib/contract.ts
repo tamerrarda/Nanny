@@ -66,12 +66,6 @@ export const AGENT_ADDRESS = getAddress(
     "0x46b471F32D1C2B537d63635954F41320e2D1Cd29",
 );
 
-/** The demo owner wallet address (public; the private key stays server-side). */
-export const OWNER_ADDRESS = getAddress(
-  process.env.NEXT_PUBLIC_OWNER_ADDRESS ??
-    "0x93F7d4dAAcbd68cA21f1B3aE9D21BBB002054736",
-);
-
 /** Resolve an address back to a human name for the spend log. */
 export function merchantName(address: string): string {
   const hit = MERCHANTS.find(

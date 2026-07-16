@@ -24,7 +24,7 @@ const label =
 const hint = "mt-1 text-[11px] text-ink-dim";
 
 export function CreateVaultForm({ onCreated }: Props) {
-  const { createVault, isPending, error } = useNannyWrite();
+  const { createVault, isPending, error, isConnected } = useNannyWrite();
 
   const [daily, setDaily] = useState("60");
   const [maxAccrual, setMaxAccrual] = useState("1");
@@ -221,8 +221,8 @@ export function CreateVaultForm({ onCreated }: Props) {
           The brand violet still does the work, as the glow around it. */}
       <motion.button
         onClick={submit}
-        disabled={isPending}
-        whileTap={isPending ? undefined : { scale: 0.985 }}
+        disabled={isPending || !isConnected}
+        whileTap={isPending || !isConnected ? undefined : { scale: 0.985 }}
         transition={{ duration: 0.15 }}
         className="hud hud-sm group relative w-full cursor-pointer overflow-hidden bg-brand-deep px-6 py-3.5 shadow-[0_0_34px_-4px_rgba(168,85,247,0.85)] transition-colors duration-200 hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -231,8 +231,14 @@ export function CreateVaultForm({ onCreated }: Props) {
           className={`absolute inset-y-0 left-0 w-24 opacity-60 ${isPending ? "sweep" : ""}`}
         />
         <span className="relative flex items-center justify-center gap-3 font-display text-base font-bold uppercase tracking-[0.16em] text-white">
-          {isPending ? "Opening…" : "Open the vault"}
-          {!isPending && (
+          {/* The button says why it's dead rather than looking clickable and
+              then failing — the wallet is the one thing the form can't supply. */}
+          {!isConnected
+            ? "Connect a wallet to open a vault"
+            : isPending
+              ? "Confirm in your wallet…"
+              : "Open the vault"}
+          {isConnected && !isPending && (
             <svg
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -244,6 +250,13 @@ export function CreateVaultForm({ onCreated }: Props) {
           )}
         </span>
       </motion.button>
+
+      {isConnected && (
+        <p className="text-center text-[11px] text-ink-dim">
+          You pay the deposit and the gas. Your vault, your keys — Nanny never
+          holds them.
+        </p>
+      )}
     </div>
   );
 }
