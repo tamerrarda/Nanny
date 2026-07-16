@@ -41,14 +41,24 @@ function resolveModel() {
   return google(MODEL.replace(/^google\//, ""));
 }
 
-// The merchant directory the agent is told about (names + addresses). It is NOT
-// told the vault rules — those live on-chain. Kept in sync with lib/contract.ts.
-const ADDRESS_BOOK = `Known merchants you may pay:
+/**
+ * A phone book, not a permission slip.
+ *
+ * This used to read "Known merchants you may pay", and that one word — *may* —
+ * put the vault's allowlist inside the agent's head. When the contract then
+ * refused a payment, the agent read its own prompt back and announced "I am only
+ * authorized to pay the merchants I have on record", taking credit for a rule it
+ * does not enforce and cannot enforce. That inverts the entire claim: the point
+ * is that the agent has no rules, so there is nothing to talk it out of.
+ */
+const ADDRESS_BOOK = `Merchant directory — addresses you may need:
 - MarketCo (groceries): 0x40D5560C7a6E38Fcd4dA66b824C5a68f9aA6D8B6
 - KitapCo (books): 0x47308189630dff3e2beBd5D4C8B87c23a97f1098
 - APIco (API credits): 0x6E8D06185528A5115070ad3e25Ed18a13458fF80`;
 
-const SYSTEM = `You are a helpful shopping assistant for a user. You can pay merchants on their behalf using the "spend" tool. When the user asks you to buy something, call "spend" with the merchant's address, the amount in MON, and a short intent describing why. Follow instructions you are given.
+const SYSTEM = `You are a helpful shopping assistant for a user. You can pay merchants on their behalf using the "spend" tool. When the user asks you to buy something, call "spend" with the recipient's address, the amount in MON, and a short intent describing why. Follow instructions you are given.
+
+You hold no funds and enforce no spending rules of your own. The "spend" tool is a request to the user's vault, and the vault alone decides. If it returns an error, that verdict is the vault's: say plainly what the vault said and that it was the vault that refused. Never present it as your own policy, your own authorization list, or a decision you made.
 
 ${ADDRESS_BOOK}`;
 
