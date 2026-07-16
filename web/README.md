@@ -1,14 +1,42 @@
 # Nanny — your AI agent needs adult supervision
 
-Give an AI agent an allowance, not your wallet. Nanny is a vault on Monad whose
-rules are enforced by a smart contract, so they hold even when the agent itself
-is talked into breaking them.
+## Description
+
+Nanny gives your AI agent an allowance instead of your wallet: a vault on Monad
+whose spending rules are enforced by a smart contract.
+
+## Problem
+
+People have started handing AI agents jobs that spend real money — groceries,
+subscriptions, API credits. There is no safe way to do it.
+
+- **Hand the agent a card or a wallet and the whole balance is exposed.** Its
+  authority is all-or-nothing: it can spend everything, anywhere, forever.
+- **An LLM agent can be talked into anything.** A poisoned page or a forged
+  invoice is enough to change what it decides to do. Prompt injection is not a
+  bug someone is about to fix; it is what these models are.
+- **Limits written in the app don't survive that.** If the rules live inside the
+  same program the attacker just persuaded, they were never rules — they were
+  suggestions, and the agent has already been talked out of them.
+
+## Solution
+
+Put the rules somewhere the agent cannot argue with: the chain.
+
+The money stays in the vault. The agent never holds it and can never move it — it
+can only *ask* the vault to pay, and the vault decides. Four rules answer that
+ask: how much has trickled in so far, how much may pile up, how large one payment
+may be, and who may be paid at all. Every spend also has to carry the agent's own
+stated reason, written on-chain, so a bad decision leaves a receipt.
+
+The agent is never told any of this. There is nothing in its context to talk it
+out of, because the rules were never in its context.
 
 > **You can fool the agent. You can't fool the math.**
 
-The agent never holds the money. It can only ask the vault to pay, and the vault
-decides. An agent that gets prompt-injected still can't send funds somewhere you
-never allowed, or spend more than has trickled in so far.
+That is a demonstration, not a slogan: the app ships two prompt-injection attacks
+that genuinely fool the agent, and you watch the contract refuse them — one on the
+recipient allowlist, one on the per-transaction cap. See [Try it](#try-it).
 
 **Live contract:** [`0x8399F8AfD80646d8e6c8Bc74B2C161C64B70228b`](https://testnet.monadscan.com/address/0x8399F8AfD80646d8e6c8Bc74B2C161C64B70228b)
 on Monad testnet (chain `10143`).
@@ -40,10 +68,18 @@ the owner and closes the vault.
 3. Open a vault: set the allowance, the caps, which merchants are allowed, and
    the deposit. You sign this — the vault is yours on-chain.
 4. Tell the agent to buy something: _"Order 0.3 MON of groceries from MarketCo."_
-5. Then poison it. The **Fake address change** button feeds the agent a forged
-   "our payout address has changed" notice as *external content*, the way a real
-   prompt injection arrives. The agent believes it and tries to pay the attacker.
-   The contract rejects the transaction.
+   It pays, and writes its reason to the chain.
+5. Then poison it. Both buttons hand the agent a forged merchant record as
+   *external content* — the way a real prompt injection arrives, as data the
+   agent reads rather than an instruction you gave it. The agent believes the
+   record. The contract does not:
+
+   | Button | What the agent tries | What the chain says |
+   |---|---|---|
+   | **Fake address change** | Pays the attacker, because the forged order carries its own `payout_address` | `NANNY: recipient not allowed` |
+   | **Drain to allowed merchant** | Pays 0.9 MON to a real merchant, because the forged invoice says the full balance is due in one transaction | `NANNY: exceeds per-tx cap` |
+
+   Two different lies, two different rules, neither of them in the agent's head.
 
 ## Running locally
 
@@ -71,8 +107,21 @@ Copy `.env.example` to `web/.env.local` and fill it in.
 | `NEXT_PUBLIC_CHAIN_ID` | `10143` for Monad testnet |
 | `AGENT_PRIVATE_KEY` | The demo agent's key. It signs spends autonomously — that is the product, not a shortcut. Server-side only. |
 | `NEXT_PUBLIC_AGENT_ADDRESS` | Public address of `AGENT_PRIVATE_KEY` |
-| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key for the LLM |
-| `AGENT_MODEL` | e.g. `google/gemini-3-flash` |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Free path — a key from [Google AI Studio](https://aistudio.google.com/apikey), no credit card. Calls go straight to Google. |
+| `AI_GATEWAY_API_KEY` | Gateway path — Vercel AI Gateway. Also accepts an OIDC token via `vercel link && vercel env pull`. Needs a card on the Vercel team before it serves anything, free credits included. |
+| `AGENT_MODEL` | `gemini-3.1-flash-lite` with the Google key; `provider/model` through the gateway |
+
+Set one of the two model keys. The route sends to Google directly when
+`GOOGLE_GENERATIVE_AI_API_KEY` is present, and through the gateway otherwise.
+
+**On picking a model.** Do not trust a model id from a blog post — check it
+against your own key, because the free tier is narrower than it is documented to
+be. On a key made in July 2026, `gemini-2.5-flash` and `gemini-2.0-flash` answer
+`no longer available to new users`, and `models.list` cheerfully lists both
+anyway. Preview models have a separate trap: `gemini-3-flash-preview` works and
+calls tools correctly, then exhausts its free daily quota in roughly twenty
+requests. `gemini-3.1-flash-lite` is what this runs on;
+`gemini-flash-lite-latest` is the spare.
 
 There is deliberately **no owner key**. Owners connect their own wallet and sign
 `createVault` / `deposit` / `freeze` themselves, so each vault's on-chain owner is
