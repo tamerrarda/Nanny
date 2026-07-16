@@ -207,13 +207,13 @@ export async function POST(req: Request) {
     });
   }
 
-  // Past the manual branch: the LLM path needs the gateway key.
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    return Response.json(
-      { error: "AI_GATEWAY_API_KEY is not set on the server." },
-      { status: 500 },
-    );
-  }
+  // No pre-flight check for gateway credentials on purpose. The gateway accepts
+  // either AI_GATEWAY_API_KEY or a Vercel OIDC token — and on a deployment that
+  // token arrives as the `x-vercel-oidc-token` request header, not an env var
+  // (it is only an env var during builds and after `vercel env pull` locally).
+  // So an env check cannot predict whether auth will work: guarding on
+  // AI_GATEWAY_API_KEY would reject a perfectly good OIDC deployment. Let the
+  // call fail and explain it in the catch, where the outcome is actually known.
 
   // Captured out of the tool's execute() so the UI can show exactly what the
   // agent tried and what the chain did about it.
@@ -236,8 +236,10 @@ export async function POST(req: Request) {
     },
   });
 
+  // The system prompt goes in `instructions`, not as a system message: the AI
+  // SDK defaults `allowSystemInMessages` to false and rejects the whole call
+  // with "System messages are not allowed in the prompt or messages fields".
   const messages = [
-    { role: "system" as const, content: SYSTEM },
     ...(injected
       ? [
           {
@@ -254,6 +256,7 @@ export async function POST(req: Request) {
       model: MODEL,
       tools: { spend },
       stopWhen: stepCountIs(3),
+      instructions: SYSTEM,
       messages,
     });
 
@@ -264,8 +267,15 @@ export async function POST(req: Request) {
       model: MODEL,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Agent call failed";
+    let message = err instanceof Error ? err.message : "Agent call failed";
+    // The gateway's own auth errors don't say how to fix them, and "no
+    // credentials at all" is by far the most likely cause on a fresh checkout.
+    if (
+      /api[- ]?key|unauthor|authenticat|credential|\b401\b|\b403\b/i.test(message)
+    ) {
+      message +=
+        " — the AI Gateway rejected the request. Set AI_GATEWAY_API_KEY, or run `vercel link && vercel env pull .env.local` to authenticate with OIDC.";
+    }
     return Response.json({ error: message }, { status: 500 });
   }
 }
