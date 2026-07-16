@@ -117,7 +117,7 @@ export function Playground({
   return (
     <div className="space-y-5">
       <div className="hud hud-frame">
-        <div className="hud hud-body p-6">
+        <div className="hud hud-body hud-ticks p-6">
           <h3 className="font-display text-xl font-bold uppercase tracking-wide text-ink">
             Talk to the agent
           </h3>

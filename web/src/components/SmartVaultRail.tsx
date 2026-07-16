@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   CHAIN_ID,
   EXPLORER_ADDRESS,
@@ -25,7 +26,7 @@ export function SmartVaultRail() {
 
   return (
     <aside className="hidden w-[232px] shrink-0 xl:block">
-      <div className="hud hud-frame hud-sm sticky top-20">
+      <div className="hud hud-frame hud-sm hud-lift sticky top-20 backdrop-blur-xl">
         <div className="hud hud-body hud-sm p-5">
           <div className="font-display text-xs font-bold uppercase tracking-[0.18em] text-ink-soft">
             Smart Vault
@@ -103,51 +104,29 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** An isometric vault plate, drawn rather than rendered — no asset to ship. */
+/**
+ * The vault, as a rendered isometric block.
+ *
+ * The art is glow on pure black with no alpha channel, so it composites with
+ * `screen` rather than a cut-out: black screens to nothing and the violet
+ * survives, which is exactly the shape of the source. Keying the black out to
+ * transparent instead would have eaten the glow, since the glow *is* the dark
+ * pixels fading toward black.
+ *
+ * The radial mask is not decoration: the render's grid floor runs to all four
+ * edges, so without it the crop stops dead and screens in as a faint rectangle
+ * floating on the panel.
+ */
 function VaultGlyph() {
   return (
-    <div className="relative mt-4 flex h-[104px] items-center justify-center">
-      <div className="absolute bottom-1 h-5 w-28 rounded-[50%] bg-brand/45 blur-lg" />
-      <div className="pedestal absolute bottom-2 h-2.5 w-20 rounded-[50%] bg-brand/70 blur-[6px]" />
-      <svg viewBox="0 0 120 100" className="relative h-full w-full">
-        <defs>
-          <linearGradient id="rail-face" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="#4c1d95" stopOpacity="0.35" />
-          </linearGradient>
-        </defs>
-        {/* Base platform */}
-        <path
-          d="M60 62 24 78 60 94 96 78 60 62Z"
-          fill="url(#rail-face)"
-          stroke="#a855f7"
-          strokeOpacity="0.7"
-        />
-        {/* Body */}
-        <path
-          d="M60 22 30 36v22l30 14 30-14V36L60 22Z"
-          fill="url(#rail-face)"
-          stroke="#c084fc"
-          strokeOpacity="0.85"
-        />
-        <path
-          d="M60 22 30 36l30 14 30-14-30-14Z"
-          fill="#a855f7"
-          fillOpacity="0.28"
-          stroke="#c084fc"
-          strokeOpacity="0.6"
-        />
-        {/* Shackle + keyhole */}
-        <path
-          d="M54 40v-4a6 6 0 0 1 12 0v4"
-          fill="none"
-          stroke="#feaf30"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        <circle cx="60" cy="50" r="3.5" fill="#feaf30" />
-        <rect x="58.6" y="50" width="2.8" height="7" fill="#feaf30" rx="1.4" />
-      </svg>
+    <div className="relative mt-3 flex h-[132px] items-center justify-center">
+      <Image
+        src="/vault-cube.png"
+        alt=""
+        width={420}
+        height={420}
+        className="h-full w-auto mix-blend-screen [mask-image:radial-gradient(circle_at_50%_52%,black_42%,transparent_78%)]"
+      />
     </div>
   );
 }

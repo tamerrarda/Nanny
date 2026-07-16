@@ -23,7 +23,10 @@ const exo2 = Exo_2({
 });
 
 export const metadata: Metadata = {
-  title: "Nanny — your AI agent needs adult supervision",
+  // The tab is the icon plus this — nothing else. The tagline lives in the
+  // hero and in `description`, which is what link previews and search results
+  // actually read; it does not need to crowd a 150px tab as well.
+  title: "NANNY",
   description:
     "Give your AI agent an allowance, not your wallet. A watchful vault on Monad that enforces the rules your agent can't be trusted to keep.",
 };

@@ -26,6 +26,12 @@ export type AetherHeroProps = {
   fragmentSource?: string;
   /** Cap device-pixel-ratio. The shader is fill-rate bound, so 2 is plenty. */
   dprMax?: number;
+  /**
+   * Draw the hero's own aurora. Turn it off when the page already paints one
+   * behind everything — two canvases would be two WebGL contexts rendering the
+   * same thing, and the seam between them would show at the hero's edge.
+   */
+  backdrop?: boolean;
 
   /* ---------- Misc ---------- */
   height?: string;
@@ -132,14 +138,17 @@ function createProgram(gl: WebGL2RenderingContext, vs: string, fs: string) {
  * asked for reduced motion, when the hero scrolls out of view, or when the tab
  * is hidden — an un-throttled fullscreen shader is a laptop-fan machine.
  */
-function AuroraCanvas({
-  fragmentSource,
-  dprMax,
+export function AuroraCanvas({
+  fragmentSource = NANNY_FRAG,
+  dprMax = 2,
   onFail,
+  className = "",
 }: {
-  fragmentSource: string;
-  dprMax: number;
-  onFail: () => void;
+  fragmentSource?: string;
+  dprMax?: number;
+  onFail?: () => void;
+  /** Positioning and masking are the caller's business — this only paints. */
+  className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -149,7 +158,7 @@ function AuroraCanvas({
 
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false });
     if (!gl) {
-      onFail();
+      onFail?.();
       return;
     }
 
@@ -158,7 +167,7 @@ function AuroraCanvas({
       prog = createProgram(gl, VERT_SRC, fragmentSource);
     } catch (e) {
       console.error("[AetherHero] shader failed to compile:", e);
-      onFail();
+      onFail?.();
       return;
     }
 
@@ -251,7 +260,7 @@ function AuroraCanvas({
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="absolute inset-0 block h-full w-full select-none [mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_100%)] [touch-action:none]"
+      className={`block h-full w-full select-none [touch-action:none] ${className}`}
     />
   );
 }
@@ -269,6 +278,7 @@ export default function AetherHero({
   maxWidth = 960,
   fragmentSource = NANNY_FRAG,
   dprMax = 2,
+  backdrop = true,
   height = "min(92svh, 880px)",
   className = "",
 }: AetherHeroProps) {
@@ -287,7 +297,7 @@ export default function AetherHero({
 
   // The CSS gradient below is always painted, so a missing canvas — reduced
   // motion, or no WebGL2 — degrades to still art rather than a black hole.
-  const showCanvas = mounted && !reduceMotion && !glFailed;
+  const showCanvas = backdrop && mounted && !reduceMotion && !glFailed;
 
   const container: Variants = {
     hidden: {},
@@ -311,23 +321,34 @@ export default function AetherHero({
       style={{ height }}
       className={`relative isolate flex w-full items-center overflow-hidden ${className}`}
     >
-      {/* Always-on gradient floor. Doubles as the reduced-motion/no-WebGL art. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[radial-gradient(80%_60%_at_50%_15%,#3b1178_0%,transparent_65%),radial-gradient(50%_50%_at_15%_70%,#2a1361_0%,transparent_60%)]"
-      />
-      {showCanvas && (
-        <AuroraCanvas
-          fragmentSource={fragmentSource}
-          dprMax={dprMax}
-          onFail={onFail}
-        />
+      {backdrop && (
+        <>
+          {/* Always-on gradient floor. Doubles as the reduced-motion/no-WebGL art. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 bg-[radial-gradient(80%_60%_at_50%_15%,#3b1178_0%,transparent_65%),radial-gradient(50%_50%_at_15%_70%,#2a1361_0%,transparent_60%)]"
+          />
+          {showCanvas && (
+            <AuroraCanvas
+              fragmentSource={fragmentSource}
+              dprMax={dprMax}
+              onFail={onFail}
+              className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_100%)]"
+            />
+          )}
+        </>
       )}
 
-      {/* Legibility scrim: darkens the shader under the text, fades out below. */}
+      {/* Legibility scrim. When the page owns the backdrop this must stay
+          translucent all the way down — the original faded to solid canvas at
+          the bottom, which would paint over the very thing it now sits on. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,15,0.72)_0%,rgba(7,5,15,0.38)_45%,var(--color-canvas)_100%)]"
+        className={
+          backdrop
+            ? "pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,15,0.72)_0%,rgba(7,5,15,0.38)_45%,var(--color-canvas)_100%)]"
+            : "pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,15,0.62)_0%,rgba(7,5,15,0.28)_45%,rgba(7,5,15,0.55)_100%)]"
+        }
       />
 
       <motion.div

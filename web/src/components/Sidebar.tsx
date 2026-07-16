@@ -47,7 +47,7 @@ export function Sidebar({
   return (
     <nav
       aria-label="Sections"
-      className="hud hud-frame hud-sm sticky top-20 hidden h-fit lg:block"
+      className="hud hud-frame hud-sm sticky top-20 hidden h-fit backdrop-blur-xl lg:block"
     >
       <div className="hud hud-body hud-sm flex flex-col gap-1 p-2">
         {ITEMS.map((item) => {

@@ -48,13 +48,10 @@
   border-color: var(--color-border);
 }
 
+/* Flat: the page's aurora backdrop paints the light now. Layering the old
+   radial gradients under it only muddied the shader's own colour. */
 body {
-  background:
-    radial-gradient(70% 55% at 50% 0%, #2a1361 0%, transparent 60%),
-    radial-gradient(50% 50% at 8% 30%, #3b1178 0%, transparent 55%),
-    radial-gradient(55% 50% at 95% 55%, #241063 0%, transparent 55%),
-    var(--color-canvas);
-  background-attachment: fixed;
+  background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -69,9 +66,11 @@ body {
 /* ─── HUD panel: a beveled, corner-cut frame ─────────────────────────────
    The cut corners come from clip-path. Because clip-path also crops any
    border, the frame is drawn as a gradient-filled parent with the surface
-   inset one pixel inside it — the 1px seam that shows through is the edge.  */
+   inset inside it — the seam that shows through is the edge. `--edge` is that
+   seam's width, so the whole UI's line weight is one number.                 */
 .hud {
   --cut: 18px;
+  --edge: 2px;
   clip-path: polygon(
     0 var(--cut),
     var(--cut) 0,
@@ -87,11 +86,14 @@ body {
 .hud-frame {
   background: linear-gradient(
     150deg,
-    color-mix(in srgb, var(--color-brand) 60%, transparent),
-    color-mix(in srgb, var(--color-border) 70%, transparent) 40%,
-    color-mix(in srgb, var(--color-brand) 35%, transparent)
+    color-mix(in srgb, var(--color-brand) 95%, transparent),
+    color-mix(in srgb, var(--color-brand-text) 55%, transparent) 30%,
+    color-mix(in srgb, var(--color-border) 90%, transparent) 62%,
+    color-mix(in srgb, var(--color-brand) 80%, transparent)
   );
-  padding: 1px;
+  padding: var(--edge);
+  /* The edge is a light source, not a line — it should bleed onto the field. */
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--color-brand) 28%, transparent));
 }
 
 .hud-body {
@@ -103,9 +105,43 @@ body {
     );
 }
 
-/* Small square-cut variant for chips, inputs and the rail. */
+/* Small square-cut variant for chips, inputs and the rail. Its edge stays
+   thinner: a 2px seam on a 28px chip reads as a mistake, not a bevel. */
 .hud-sm {
   --cut: 9px;
+  --edge: 1px;
+}
+
+/* ─── Corner ticks ───────────────────────────────────────────────────────
+   Two short brackets pinned to opposite corners of a panel. This is the whole
+   sci-fi tell: the clip-path already cuts the corners, and marking those cuts
+   makes the panel read as machined rather than merely rounded-off.           */
+.hud-ticks {
+  position: relative;
+  /* Named, and passed into each border shorthand below. `border-top: 2px solid`
+     with no colour silently resets to currentColor — which here is the panel's
+     white body text — so a separate border-color declaration gets overridden. */
+  --tick: color-mix(in srgb, var(--color-brand-text) 80%, transparent);
+}
+.hud-ticks::before,
+.hud-ticks::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.hud-ticks::before {
+  top: 9px;
+  left: 9px;
+  border-top: var(--edge) solid var(--tick);
+  border-left: var(--edge) solid var(--tick);
+}
+.hud-ticks::after {
+  right: 9px;
+  bottom: 9px;
+  border-right: var(--edge) solid var(--tick);
+  border-bottom: var(--edge) solid var(--tick);
 }
 
 /* Lifts a panel toward the viewer on hover — depth without a layout shift. */
@@ -182,6 +218,33 @@ body {
   );
   background-size: 28px 100%;
   animation: sweep 0.9s linear infinite;
+}
+
+/* ─── Ambient field for the app half ────────────────────────────────────
+   The drifting CSS blobs that used to live here are gone: the page-level aurora
+   canvas now paints behind the app too, so they were a second, weaker answer to
+   a question already answered.                                                 */
+
+/* A faint ruled field, masked to fade out at the edges. Gives the panels
+   something to sit on so they read as placed rather than floating. */
+.app-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-brand) 8%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-brand) 8%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 56px 56px;
+  mask-image: radial-gradient(
+    70% 55% at 50% 30%,
+    black 0%,
+    transparent 100%
+  );
 }
 
 /* Scroll cue under the hero. */

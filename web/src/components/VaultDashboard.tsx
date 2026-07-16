@@ -80,7 +80,7 @@ export function VaultDashboard({
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         className="hud hud-frame"
       >
-        <div className="hud hud-body p-6">
+        <div className="hud hud-body hud-ticks p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">

@@ -1,8 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { useState } from "react";
 import type { Address } from "viem";
+import { useConnect } from "wagmi";
 import { AGENT_ADDRESS, MERCHANTS, type Merchant } from "@/lib/contract";
 import { hourlyMonToDripRate, monToWei } from "@/lib/units";
 import { useNannyWrite } from "@/lib/useNanny";
@@ -23,8 +24,28 @@ const label =
   "font-display text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft";
 const hint = "mt-1 text-[11px] text-ink-dim";
 
+/* The form is a long column of rules. Landing them one after another gives the
+   eye an order to read in; landing all twelve at once is just a wall. */
+const formStagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.055, delayChildren: 0.12 } },
+};
+const row: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
 export function CreateVaultForm({ onCreated }: Props) {
   const { createVault, isPending, error, isConnected } = useNannyWrite();
+  // The primary button connects when there's no wallet yet, rather than sitting
+  // disabled and sending you hunting for a button somewhere else on the page.
+  const { connect, connectors, isPending: connecting, error: connectError } =
+    useConnect();
+  const busy = isPending || connecting;
 
   const [daily, setDaily] = useState("60");
   const [maxAccrual, setMaxAccrual] = useState("1");
@@ -67,8 +88,17 @@ export function CreateVaultForm({ onCreated }: Props) {
   }
 
   return (
-    <div className="space-y-3.5">
-      <div>
+    <motion.div
+      variants={formStagger}
+      initial="hidden"
+      // whileInView, not animate: this form mounts with the page, so `animate`
+      // would run the whole stagger while the visitor is still reading the hero
+      // and leave nothing to see by the time they scroll down to it.
+      whileInView="show"
+      viewport={{ once: true, margin: "-80px" }}
+      className="space-y-3.5"
+    >
+      <motion.div variants={row}>
         <label className={label}>How much allowance per hour?</label>
         <div className="relative mt-1">
           <input
@@ -82,9 +112,9 @@ export function CreateVaultForm({ onCreated }: Props) {
           </span>
         </div>
         <p className={hint}>Trickles in second by second — not all at once.</p>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <motion.div variants={row} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={label}>Most it can save up</label>
           <input
@@ -105,9 +135,9 @@ export function CreateVaultForm({ onCreated }: Props) {
           />
           <p className={hint}>A ceiling on any single payment.</p>
         </div>
-      </div>
+      </motion.div>
 
-      <div>
+      <motion.div variants={row}>
         <label className={label}>Where can it spend?</label>
         <div className="mt-1.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           {MERCHANTS.map((m) => {
@@ -184,9 +214,9 @@ export function CreateVaultForm({ onCreated }: Props) {
         <p className={hint}>
           Your agent can pay only these. Anywhere else is blocked on-chain.
         </p>
-      </div>
+      </motion.div>
 
-      <div>
+      <motion.div variants={row}>
         <label className={label}>How much to put in the vault?</label>
         <div className="relative mt-1">
           <input
@@ -200,10 +230,10 @@ export function CreateVaultForm({ onCreated }: Props) {
           </span>
         </div>
         <p className={hint}>Stays in the vault. Your agent never holds it.</p>
-      </div>
+      </motion.div>
 
       <AnimatePresence>
-        {(formError || error) && (
+        {(formError || error || connectError) && (
           <motion.p
             role="alert"
             initial={{ opacity: 0, height: 0 }}
@@ -212,7 +242,7 @@ export function CreateVaultForm({ onCreated }: Props) {
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="hud hud-sm overflow-hidden bg-block-tint px-4 py-3 text-sm font-medium text-block ring-1 ring-inset ring-block/40"
           >
-            {formError ?? error?.message}
+            {formError ?? error?.message ?? connectError?.message}
           </motion.p>
         )}
       </AnimatePresence>
@@ -220,25 +250,28 @@ export function CreateVaultForm({ onCreated }: Props) {
       {/* Filled with brand-deep, not brand: white on #a855f7 is only 4.0:1.
           The brand violet still does the work, as the glow around it. */}
       <motion.button
-        onClick={submit}
-        disabled={isPending || !isConnected}
-        whileTap={isPending || !isConnected ? undefined : { scale: 0.985 }}
+        variants={row}
+        onClick={
+          isConnected ? submit : () => connect({ connector: connectors[0] })
+        }
+        disabled={busy}
+        whileTap={busy ? undefined : { scale: 0.985 }}
         transition={{ duration: 0.15 }}
         className="hud hud-sm group relative w-full cursor-pointer overflow-hidden bg-brand-deep px-6 py-3.5 shadow-[0_0_34px_-4px_rgba(168,85,247,0.85)] transition-colors duration-200 hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span
           aria-hidden="true"
-          className={`absolute inset-y-0 left-0 w-24 opacity-60 ${isPending ? "sweep" : ""}`}
+          className={`absolute inset-y-0 left-0 w-24 opacity-60 ${busy ? "sweep" : ""}`}
         />
         <span className="relative flex items-center justify-center gap-3 font-display text-base font-bold uppercase tracking-[0.16em] text-white">
-          {/* The button says why it's dead rather than looking clickable and
-              then failing — the wallet is the one thing the form can't supply. */}
           {!isConnected
-            ? "Connect a wallet to open a vault"
+            ? connecting
+              ? "Connecting…"
+              : "Connect wallet"
             : isPending
               ? "Confirm in your wallet…"
               : "Open the vault"}
-          {isConnected && !isPending && (
+          {!busy && (
             <svg
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -251,12 +284,23 @@ export function CreateVaultForm({ onCreated }: Props) {
         </span>
       </motion.button>
 
-      {isConnected && (
-        <p className="text-center text-[11px] text-ink-dim">
-          You pay the deposit and the gas. Your vault, your keys — Nanny never
-          holds them.
-        </p>
-      )}
-    </div>
+      <motion.p variants={row} className="text-center text-[11px] text-ink-dim">
+        {isConnected ? (
+          "You pay the deposit and the gas. Your vault, your keys — Nanny never holds them."
+        ) : (
+          <>
+            You&apos;ll need Monad testnet MON —{" "}
+            <a
+              href="https://faucet.monad.xyz"
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand-text underline-offset-2 hover:underline"
+            >
+              get some from the faucet ↗
+            </a>
+          </>
+        )}
+      </motion.p>
+    </motion.div>
   );
 }
