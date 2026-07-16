@@ -1,5 +1,6 @@
-# Local-only spec — NEVER commit (working rule #9)
+AGENTS.md
 NANNY.md
+CLAUDE.md
 
 # Secrets
 .env
