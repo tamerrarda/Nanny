@@ -4,11 +4,7 @@
 
 ### Your AI agent needs adult supervision.
 
-**[Live demo →](https://getnanny.vercel.app)**  ·  Demo video *(coming)*  ·  [Contract on Monad](https://testnet.monadscan.com/address/0x8399F8AfD80646d8e6c8Bc74B2C161C64B70228b)
-
-<!-- DEMO VIDEO: replace the line above with
-     **[Live demo →](https://getnanny.vercel.app)**  ·  **[Demo video →](URL)**  ·  [Contract on Monad](...)
--->  
+**[Live demo →](https://getnanny.vercel.app)**  ·  **[Demo video →](https://youtu.be/yDEuN9lzFTY)**  ·  [Contract on Monad](https://testnet.monadscan.com/address/0x8399F8AfD80646d8e6c8Bc74B2C161C64B70228b)
 
 </div>
 
