@@ -1,3 +1,4 @@
+import { google } from "@ai-sdk/google";
 import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import {
@@ -24,6 +25,21 @@ const VAULT = getAddress(
     "0x8399F8AfD80646d8e6c8Bc74B2C161C64B70228b",
 );
 const MODEL = process.env.AGENT_MODEL || "google/gemini-3-flash";
+
+/**
+ * Two ways to reach the model, and the env picks which without a code change.
+ *
+ * With GOOGLE_GENERATIVE_AI_API_KEY set, calls go straight to Google AI Studio,
+ * whose free tier needs no card. Without it, a bare "provider/model" string
+ * routes through the Vercel AI Gateway — which is the better long-term home
+ * (failover, spend tracking) but will not serve a request until the team has a
+ * card on file, free credits included.
+ */
+function resolveModel() {
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) return MODEL;
+  // The gateway wants "google/gemini-x"; the direct provider wants "gemini-x".
+  return google(MODEL.replace(/^google\//, ""));
+}
 
 // The merchant directory the agent is told about (names + addresses). It is NOT
 // told the vault rules — those live on-chain. Kept in sync with lib/contract.ts.
@@ -253,7 +269,7 @@ export async function POST(req: Request) {
 
   try {
     const result = await generateText({
-      model: MODEL,
+      model: resolveModel(),
       tools: { spend },
       stopWhen: stepCountIs(3),
       instructions: SYSTEM,
@@ -274,7 +290,7 @@ export async function POST(req: Request) {
       /api[- ]?key|unauthor|authenticat|credential|\b401\b|\b403\b/i.test(message)
     ) {
       message +=
-        " — the AI Gateway rejected the request. Set AI_GATEWAY_API_KEY, or run `vercel link && vercel env pull .env.local` to authenticate with OIDC.";
+        " — the model call was rejected. Free path: set GOOGLE_GENERATIVE_AI_API_KEY from aistudio.google.com (no card). Gateway path: set AI_GATEWAY_API_KEY, or `vercel link && vercel env pull .env.local` for OIDC — the gateway also needs a card on file before it serves anything.";
     }
     return Response.json({ error: message }, { status: 500 });
   }
